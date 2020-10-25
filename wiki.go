@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -28,8 +28,11 @@ func loadPage(title string) (*Page, error) {
 
 func viewHandler(w http.ResponseWriter, r *http.Request) {
 	title := r.URL.Path[len("/view/"):]
-	p, _ := loadPage(title)
-	fmt.Fprintf(w, "<h1>%s</h1><p>%s</p>", p.Title, p.Body)
+	p, err := loadPage(title)
+	if err != nil {
+		http.Redirect(w, r, "/edit/"+title, http.StatusNotFound)
+	}
+	renderTemplate(w, "view", p)
 }
 
 func editHandler(w http.ResponseWriter, r *http.Request) {
@@ -38,15 +41,15 @@ func editHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		p = &Page{Title: title}
 	}
-	fmt.Fprintf(w, "<h1>%s</h1>"+
-		"<form action=\"save/%s\" method=\"post\">"+
-		"<textarea name=\"body\">%s</textarea><br>"+
-		"<input type=\"submit\" value=\"save\">"+
-		"</form>",
-		p.Title, p.Body, p.Title)
+	renderTemplate(w, "edit", p)
 }
 
 func saveHandler(w http.ResponseWriter, r *http.Request) {
+}
+
+func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
+	t, _ := template.ParseFiles(tmpl + ".html")
+	t.Execute(w, p)
 }
 
 func main() {
@@ -55,8 +58,4 @@ func main() {
 	http.HandleFunc("/save/", saveHandler)
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
-	//p1 := &Page{Title: "TestPage", Body: []byte("This is a sample page")}
-	//p1.save()
-	//p2, _ := loadPage("TestPage")
-	//fmt.Println(string(p2.Body))
 }
